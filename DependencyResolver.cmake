@@ -49,9 +49,8 @@ macro(fetchcontent_dependencies)
         set (LOCAL_SOURCE ${PROJECT_SOURCE_DIR}/${FETCHCONTENT_DEPENDENCIES_WORKSPACE}/${name})
 
         if (EXISTS ${LOCAL_SOURCE})
-            # Note that cmake makes a copy into its build/_deps directory, but 
-            # detects any changes made at 
-            # ${LOCAL_SOURCE} 
+            # Note that cmake does not copy this, but refers to the clone 
+            # and thereby detects any changes made at ${LOCAL_SOURCE}  
 
             # Check git version
             if (EXISTS ${LOCAL_SOURCE}/.git)            
