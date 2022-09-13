@@ -4,3 +4,4 @@ CMake utilities addressing configuration management and dependency hell mitigati
 
 See [this talk](https://github.com/daixtrose/saying-goodbye-to-dependency-hell) for a little background.
 
+See https://github.com/dep-heaven/tool_1 for how to use this tool.  
