@@ -1,0 +1,186 @@
+#!/usr/bin/env -S cmake -P
+
+if(CMAKE_SCRIPT_MODE_FILE)
+    set(SCRIPT_MODE TRUE)
+    set(PROJECT_SOURCE_DIR $ENV{PWD})
+    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/../RepoMan-${PROJECT_DIRECTORY_NAME}-temp" CACHE PATH "" FORCE)
+else()
+    set(SCRIPT_MODE FALSE)
+endif()
+
+set(ENV{LC_ALL} C)
+
+include(FetchContent)
+
+set(REPOMAN_EDIT_DEPS ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
+
+function(repoman__internal__handle_dependencies DIRECTORY)
+    set(REPOMAN_DEPENDENCY_FILE "${DIRECTORY}/dependencies.txt")
+    if(EXISTS "${REPOMAN_DEPENDENCY_FILE}")
+        message(STATUS "Resolving dependencies of project ${DIRECTORY}")
+
+        cmake_path(GET CMAKE_SOURCE_DIR FILENAME PROJECT_DIRECTORY_NAME)
+        file(REAL_PATH "${CMAKE_SOURCE_DIR}/../${PROJECT_DIRECTORY_NAME}-dependencies" REPOMAN_WORKSPACE_INIT EXPAND_TILDE)
+        set(REPOMAN_WORKSPACE "${REPOMAN_WORKSPACE_INIT}" CACHE STRING "The base workspace for projects.")
+        if(NOT REPOMAN_WORKSPACE)
+            message(WARNING "REPOMAN_WORKSPACE is empty, falling back to '${CMAKE_BINARY_DIR}'.")
+            set(REPOMAN_WORKSPACE "${CMAKE_BINARY_DIR}" CACHE STRING "" FORCE)
+        endif()
+        file(MAKE_DIRECTORY "${REPOMAN_WORKSPACE}")
+
+        if(NOT SCRIPT_MODE)
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${REPOMAN_DEPENDENCY_FILE}")
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${REPOMAN_WORKSPACE}")
+        endif()
+
+        unset(REPOMAN_DEPENDENCIES)
+        file(STRINGS "${REPOMAN_DEPENDENCY_FILE}" REPOMAN_DEPENDENCY_SPECS ENCODING UTF-8)
+        foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCY_SPECS)
+            if(DEPENDENCY MATCHES "^ *#.*" OR DEPENDENCY STREQUAL "")
+                continue()
+            endif()
+
+            string(REPLACE " " ";" DEPENDENCY_INFO ${DEPENDENCY})
+
+            list(GET DEPENDENCY_INFO 0 REPOMAN_DEPENDENCY_NAME)
+
+            unset(REPOMAN_DEPENDENCY_GIT_REPOSITORY)
+            unset(REPOMAN_DEPENDENCY_URL)
+            unset(REPOMAN_DEPENDENCY_SVN_REPOSITORY)
+            unset(REPOMAN_DEPENDENCY_HG_REPOSITORY)
+            unset(REPOMAN_DEPENDENCY_CVS_REPOSITORY)
+            cmake_parse_arguments(REPOMAN_DEPENDENCY
+                                  ""
+                                  "GIT_REPOSITORY;GIT_TAG;URL_HASH;URL_MD5;SVN_REPOSITORY;SVN_REVISION;HG_REPOSITORY;HG_TAG;CVS_REPOSITORY;CVS_MODULE;CVS_TAG"
+                                  "URL"
+                                  "${DEPENDENCY_INFO}")
+            if(REPOMAN_DEPENDENCY_GIT_REPOSITORY)
+                set(REPOMAN_DEPENDENCY_URI ${REPOMAN_DEPENDENCY_GIT_REPOSITORY})
+                set(REPOMAN_DEPENDENCY_REVISION  ${REPOMAN_DEPENDENCY_GIT_TAG})
+            elseif(REPOMAN_DEPENDENCY_URL)
+                set(REPOMAN_DEPENDENCY_URI ${REPOMAN_DEPENDENCY_URL})
+                if(REPOMAN_DEPENDENCY_URL_HASH)
+                    set(REPOMAN_DEPENDENCY_REVISION  ${REPOMAN_DEPENDENCY_URL_HASH})
+                elseif(REPOMAN_DEPENDENCY_URL_MD5)
+                    set(REPOMAN_DEPENDENCY_REVISION  ${REPOMAN_DEPENDENCY_URL_MD5})
+                endif()
+            elseif(REPOMAN_DEPENDENCY_SVN_REPOSITORY)
+                set(REPOMAN_DEPENDENCY_URI ${REPOMAN_DEPENDENCY_SVN_REPOSITORY})
+                set(REPOMAN_DEPENDENCY_REVISION  ${REPOMAN_DEPENDENCY_SVN_TAG})
+            elseif(REPOMAN_DEPENDENCY_HG_REPOSITORY)
+                set(REPOMAN_DEPENDENCY_URI ${REPOMAN_DEPENDENCY_HG_REPOSITORY})
+                set(REPOMAN_DEPENDENCY_REVISION  ${REPOMAN_DEPENDENCY_HG_TAG})
+            elseif(REPOMAN_DEPENDENCY_CVS_REPOSITORY)
+                set(REPOMAN_DEPENDENCY_URI ${REPOMAN_DEPENDENCY_CVS_REPOSITORY})
+                set(REPOMAN_DEPENDENCY_REVISION  ${REPOMAN_DEPENDENCY_CVS_TAG})
+            endif()
+
+            message(STATUS "Checking dependency '${REPOMAN_DEPENDENCY_NAME}': ${REPOMAN_DEPENDENCY_URI} @ ${REPOMAN_DEPENDENCY_REVISION}")
+
+            get_property(OVERWRITE_REVISION GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_REVISION)
+            if(NOT OVERWRITE_REVISION)
+                set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_REVISION ${REPOMAN_DEPENDENCY_REVISION})
+                set_property(GLOBAL APPEND PROPERTY GLOBAL_REPOMAN_DEPENDENCIES ${REPOMAN_DEPENDENCY_NAME})
+            endif()
+            set_property(GLOBAL APPEND PROPERTY ${REPOMAN_DEPENDENCY_NAME}_REQUESTED_REVISIONS ${REPOMAN_DEPENDENCY_REVISION})
+
+            list(APPEND REPOMAN_DEPENDENCIES ${REPOMAN_DEPENDENCY_NAME})
+
+            set(DEPENDENCY_EDIT_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
+            if(EXISTS "${DEPENDENCY_EDIT_SOURCE_DIR}" OR REPOMAN_EDIT_DEPS)
+                set(DEPENDENCY_SOURCE_DIR ${DEPENDENCY_EDIT_SOURCE_DIR})
+            else()
+                set(DEPENDENCY_SOURCE_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-src)
+            endif()
+            set(DEPENDENCY_BINARY_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-build)
+            set(DEPENDENCY_SUBBUILD_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-subbuild)
+
+            if(NOT SCRIPT_MODE)
+                FetchContent_Declare(${DEPENDENCY_INFO}
+                                     SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}"
+                                     BINARY_DIR "${DEPENDENCY_BINARY_DIR}"
+                                     SUBBUILD_DIR "${DEPENDENCY_SUBBUILD_DIR}")
+            endif()
+
+            if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_EDIT_DEPS)
+                FetchContent_GetProperties(${REPOMAN_DEPENDENCY_NAME} POPULATED IS_POPULATED)
+                if(NOT IS_POPULATED)
+                    message(STATUS "Initializing in '${DEPENDENCY_SOURCE_DIR}'")
+
+                    if(SCRIPT_MODE)
+                        FetchContent_Populate(${DEPENDENCY_INFO}
+                                              SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}"
+                                              BINARY_DIR "${DEPENDENCY_BINARY_DIR}"
+                                              SUBBUILD_DIR "${DEPENDENCY_SUBBUILD_DIR}")
+                    else()
+                        FetchContent_Populate(${REPOMAN_DEPENDENCY_NAME})
+                    endif()
+
+                    if(NOT REPOMAN_DEPENDENCY_URI)
+                        string(TOLOWER ${REPOMAN_DEPENDENCY_NAME} LOWER_NAME)
+                        string(TOUPPER ${REPOMAN_DEPENDENCY_NAME} UPPER_NAME)
+                        set(FETCHCONTENT_SOURCE_DIR_${UPPER_NAME} "${${LOWER_NAME}_SOURCE_DIR}")
+                    endif()
+                endif()
+            else()
+                string(TOLOWER ${REPOMAN_DEPENDENCY_NAME} LOWER_NAME)
+                set(${LOWER_NAME}_SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}")
+                set(${LOWER_NAME}_BINARY_DIR "${DEPENDENCY_BINARY_DIR}")
+                set(${LOWER_NAME}_POPULATED TRUE)
+                file(MAKE_DIRECTORY "${DEPENDENCY_BINARY_DIR}")
+
+                if(OVERWRITE_REVISION AND NOT REPOMAN_DEPENDENCY_REVISION STREQUAL OVERWRITE_REVISION)
+                    message(STATUS "Dependency '${REPOMAN_DEPENDENCY_NAME} @ ${REPOMAN_DEPENDENCY_REVISION}' is overridden with '${REPOMAN_DEPENDENCY_NAME} @ ${OVERWRITE_REVISION}'")
+                    set(REPOMAN_DEPENDENCY_REVISION ${OVERWRITE_REVISION})
+                endif()
+
+                if (EXISTS ${DEPENDENCY_SOURCE_DIR}/.git AND NOT OVERWRITE_REVISION)
+                    set(NAME ${REPOMAN_DEPENDENCY_NAME})
+                    set(REPO ${DEPENDENCY_SOURCE_DIR})
+                    set(EXPECTED_REVISION ${REPOMAN_DEPENDENCY_REVISION})
+                    set(EXPECTED_REMOTE ${REPOMAN_DEPENDENCY_URI})
+                    include(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/RepoManStatus.cmake)
+                endif()
+            endif()
+        endforeach()
+
+        foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCIES)
+            get_property(ADDED GLOBAL PROPERTY ${DEPENDENCY}_ADDED)
+            string(TOLOWER ${DEPENDENCY} NAME)
+            if(NOT ADDED AND ${NAME}_POPULATED)
+                if(NOT SCRIPT_MODE)
+                    add_subdirectory(${${NAME}_SOURCE_DIR} ${${NAME}_BINARY_DIR})
+                else()
+                    repoman__internal__handle_dependencies(${${NAME}_SOURCE_DIR})
+                endif()
+                set_property(GLOBAL PROPERTY ${DEPENDENCY}_ADDED TRUE)
+            endif()
+        endforeach()
+    endif()
+endfunction()
+
+function(repoman__internal__print_summary)
+    get_property(REPOMAN_DEPENDENCIES GLOBAL PROPERTY GLOBAL_REPOMAN_DEPENDENCIES)
+    if(REPOMAN_DEPENDENCIES)
+        message(STATUS "Dependencies:")
+        foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCIES)
+            get_property(REVISION GLOBAL PROPERTY ${DEPENDENCY}_REVISION)
+            get_property(ALL_REVISIONS GLOBAL PROPERTY ${DEPENDENCY}_REQUESTED_REVISIONS)
+            string(REPLACE ";" ", " ALL_REVISIONS "${ALL_REVISIONS}")
+            message(STATUS "    ${DEPENDENCY} @ ${REVISION}, chosen from [${ALL_REVISIONS}]")
+        endforeach()
+    endif()
+endfunction()
+
+repoman__internal__handle_dependencies(${PROJECT_SOURCE_DIR})
+
+if(SCRIPT_MODE)
+    repoman__internal__print_summary()
+    file(REMOVE_RECURSE "${FETCHCONTENT_BASE_DIR}")
+else()
+    get_property(DEFER_INSTALLED GLOBAL PROPERTY REPOMAN_DEFER_INSTALLED)
+    if(NOT DEFER_INSTALLED)
+        cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" ID repo_man_summary CALL repoman__internal__print_summary)
+        set_property(GLOBAL PROPERTY REPOMAN_DEFER_INSTALLED TRUE)
+    endif()
+endif()
