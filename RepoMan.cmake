@@ -8,13 +8,15 @@ else()
 endif()
 
 set(ENV{LC_ALL} C)
+set(REPOMAN_DEPENDENCIES_FILE_NAME "dependencies.txt" CACHE STRING "The dependencies file name.")
+mark_as_advanced(REPOMAN_DEPENDENCIES_FILE_NAME)
 
 include(FetchContent)
 
 set(REPOMAN_EDIT_DEPS ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
 
 function(repoman__internal__handle_dependencies DIRECTORY)
-    set(REPOMAN_DEPENDENCY_FILE "${DIRECTORY}/dependencies.txt")
+    set(REPOMAN_DEPENDENCY_FILE "${DIRECTORY}/${REPOMAN_DEPENDENCIES_FILE_NAME}")
     if(EXISTS "${REPOMAN_DEPENDENCY_FILE}")
         message(STATUS "Resolving dependencies of project ${DIRECTORY}")
 
