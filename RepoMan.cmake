@@ -7,7 +7,6 @@ else()
     set(SCRIPT_MODE FALSE)
 endif()
 
-set(ENV{LC_ALL} C)
 set(REPOMAN_EDIT_DEPENDENCIES ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
 set(REPOMAN_DEPENDENCIES_FILE_NAME "dependencies.txt" CACHE STRING "The dependencies file name.")
 mark_as_advanced(REPOMAN_DEPENDENCIES_FILE_NAME)
