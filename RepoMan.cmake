@@ -1,18 +1,79 @@
+#[=======================================================================[.rst:
+RepoMan
+-------
+
+Overview
+^^^^^^^^
+This module handles project dependencies.
+
+Usage
+^^^^^
+
+Including the module is suficient. It will automatically look for a dependencies file in ``PROJECT_SOURCE_DIR`` and resolve the dependencies recursively.
+
+.. code-block:: cmake
+  include(RepoMan)
+
+Alternatively, you can also include it via add_subdirectory() or provide it via FetchContent():
+
+.. code-block:: cmake
+  include(FetchContent)
+
+  FetchContent_Declare(
+    cmake_utilities
+    GIT_REPOSITORY https://github.com/daixtrose/cmake_utilities
+    GIT_TAG        main
+  )
+
+  FetchContent_MakeAvailable(cmake_utilities)
+
+
+In oder to actually do anything, the project root directory must contain a ``dependencies. txt`` file or a file with a different name, if ``REPOMAN_DEPENDENCIES_FILE_NAME`` is set accordingly.
+This file must contain one line for each dependency, in the format given to ``FetchContent()``. All arguments of ``FetchContent()`` are supported. Empty and commented lines are also alloowed and will be ignored.
+
+Each dependency defined this way will be provided and included via ``add_subdirectory()``. Any sub-dependencies in a dependency's ``dependencies. txt`` will also be added. If a dependency has already been defined ina parent project, that definition takes precedence, so higher-level projects can override their child dependency's requirements.
+
+Variables
+^^^^^^^^^
+The following variables modify the behaviour of the module. They are set to reasonable default values.
+
+.. note::
+  If you want to modify the variables in your project code, you should do so before including the module.
+
+
+.. variable:: REPOMAN_EDIT_DEPENDENCIES
+  Allow editing of dependencies. This puts the sources next to the main project to allow easier editing. If ``FALSE``, RepoMan will use the default ``FetchContent`` directories.
+
+.. variable:: REPOMAN_DEPENDENCIES_FILE_NAME
+  The dependencies file name, ``dependencies.txt`` by default.
+
+#]=======================================================================]
 
 if(CMAKE_SCRIPT_MODE_FILE)
     set(SCRIPT_MODE TRUE)
+    # If RepoMan is run as a script (outside of a CMake project), the variables below do not have any meaning by default.
     set(PROJECT_SOURCE_DIR $ENV{PWD})
-    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/../RepoMan-${PROJECT_DIRECTORY_NAME}-temp" CACHE PATH "" FORCE)
+    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/../RepoMan-${PROJECT_DIRECTORY_NAME}-temp" CACHE PATH "The FetchContent base directory, modified by RepoMan." FORCE)
 else()
     set(SCRIPT_MODE FALSE)
 endif()
 
+# Module Configuration
 set(REPOMAN_EDIT_DEPENDENCIES ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
 set(REPOMAN_DEPENDENCIES_FILE_NAME "dependencies.txt" CACHE STRING "The dependencies file name.")
 mark_as_advanced(REPOMAN_DEPENDENCIES_FILE_NAME)
 
 include(FetchContent)
 
+#[[
+repoman__internal__handle_dependencies()
+
+Resolve and provide dependencies recursively.
+
+Arguments
+^^^^^^^^^
+DIRECTORY The directory to search for REPOMAN_DEPENDENCIES_FILE_NAME
+#]]
 function(repoman__internal__handle_dependencies DIRECTORY)
     set(REPOMAN_DEPENDENCY_FILE "${DIRECTORY}/${REPOMAN_DEPENDENCIES_FILE_NAME}")
     if(EXISTS "${REPOMAN_DEPENDENCY_FILE}")
@@ -35,12 +96,15 @@ function(repoman__internal__handle_dependencies DIRECTORY)
         unset(REPOMAN_DEPENDENCIES)
         file(STRINGS "${REPOMAN_DEPENDENCY_FILE}" REPOMAN_DEPENDENCY_SPECS ENCODING UTF-8)
         foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCY_SPECS)
+            # Filter out empty or commented lines
             if(DEPENDENCY MATCHES "^ *#.*" OR DEPENDENCY STREQUAL "")
                 continue()
             endif()
 
+            # Change line to list
             string(REPLACE " " ";" DEPENDENCY_INFO ${DEPENDENCY})
 
+            # Parse dependency definition to be used in checks and printed information
             list(GET DEPENDENCY_INFO 0 REPOMAN_DEPENDENCY_NAME)
 
             unset(REPOMAN_DEPENDENCY_GIT_REPOSITORY)
@@ -76,6 +140,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
 
             message(STATUS "Checking dependency '${REPOMAN_DEPENDENCY_NAME}': ${REPOMAN_DEPENDENCY_URI} @ ${REPOMAN_DEPENDENCY_REVISION}")
 
+            # Set first-encountered revision
             get_property(OVERWRITE_REVISION GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_REVISION)
             if(NOT OVERWRITE_REVISION)
                 set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_REVISION ${REPOMAN_DEPENDENCY_REVISION})
@@ -85,6 +150,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
 
             list(APPEND REPOMAN_DEPENDENCIES ${REPOMAN_DEPENDENCY_NAME})
 
+            # Set depedencvy directories
             set(DEPENDENCY_EDIT_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
             if(EXISTS "${DEPENDENCY_EDIT_SOURCE_DIR}" OR REPOMAN_EDIT_DEPENDENCIES)
                 set(DEPENDENCY_SOURCE_DIR ${DEPENDENCY_EDIT_SOURCE_DIR})
@@ -94,6 +160,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             set(DEPENDENCY_BINARY_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-build)
             set(DEPENDENCY_SUBBUILD_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-subbuild)
 
+            # FetchContent_Declare() defines properties and i thus not usable in script mode
             if(NOT SCRIPT_MODE)
                 FetchContent_Declare(${DEPENDENCY_INFO}
                                      SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}"
@@ -101,17 +168,21 @@ function(repoman__internal__handle_dependencies DIRECTORY)
                                      SUBBUILD_DIR "${DEPENDENCY_SUBBUILD_DIR}")
             endif()
 
+            # Handle dependency
             if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_EDIT_DEPENDENCIES)
+                # Define and fetch dependencies
                 FetchContent_GetProperties(${REPOMAN_DEPENDENCY_NAME} POPULATED IS_POPULATED)
                 if(NOT IS_POPULATED)
                     message(STATUS "Initializing in '${DEPENDENCY_SOURCE_DIR}'")
 
                     if(SCRIPT_MODE)
+                        # Script mode without FetchContent_Declare(): define and provide
                         FetchContent_Populate(${DEPENDENCY_INFO}
                                               SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}"
                                               BINARY_DIR "${DEPENDENCY_BINARY_DIR}"
                                               SUBBUILD_DIR "${DEPENDENCY_SUBBUILD_DIR}")
                     else()
+                        # Inside a CMake project: dependency has been declared with FetchContent_Declare() above.
                         FetchContent_Populate(${REPOMAN_DEPENDENCY_NAME})
                     endif()
 
@@ -122,6 +193,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
                     endif()
                 endif()
             else()
+                # Dependency already exists, show status information
                 string(TOLOWER ${REPOMAN_DEPENDENCY_NAME} LOWER_NAME)
                 set(${LOWER_NAME}_SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}")
                 set(${LOWER_NAME}_BINARY_DIR "${DEPENDENCY_BINARY_DIR}")
@@ -129,11 +201,14 @@ function(repoman__internal__handle_dependencies DIRECTORY)
                 file(MAKE_DIRECTORY "${DEPENDENCY_BINARY_DIR}")
 
                 if(OVERWRITE_REVISION AND NOT REPOMAN_DEPENDENCY_REVISION STREQUAL OVERWRITE_REVISION)
+                    # Print message in case a dependency is overridden by a parent.
                     message(STATUS "Dependency '${REPOMAN_DEPENDENCY_NAME} @ ${REPOMAN_DEPENDENCY_REVISION}' is overridden with '${REPOMAN_DEPENDENCY_NAME} @ ${OVERWRITE_REVISION}'")
                     set(REPOMAN_DEPENDENCY_REVISION ${OVERWRITE_REVISION})
                 endif()
 
                 if (EXISTS ${DEPENDENCY_SOURCE_DIR}/.git AND NOT OVERWRITE_REVISION)
+                    # Show status of local repository
+                    # Only supports git for now
                     set(NAME ${REPOMAN_DEPENDENCY_NAME})
                     set(REPO ${DEPENDENCY_SOURCE_DIR})
                     set(EXPECTED_REVISION ${REPOMAN_DEPENDENCY_REVISION})
@@ -143,14 +218,18 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             endif()
         endforeach()
 
+        # Include dependencies as sub-projects and resolve their dependencies
         foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCIES)
             get_property(ADDED GLOBAL PROPERTY ${DEPENDENCY}_ADDED)
             string(TOLOWER ${DEPENDENCY} NAME)
+
+            # Add not-yet included dependencies
             if(NOT ADDED AND ${NAME}_POPULATED)
-                if(NOT SCRIPT_MODE)
-                    add_subdirectory(${${NAME}_SOURCE_DIR} ${${NAME}_BINARY_DIR})
-                else()
+                if(SCRIPT_MODE)
+                    # add_subdirectory() does not work in script mode, just call the setup function recursively
                     repoman__internal__handle_dependencies(${${NAME}_SOURCE_DIR})
+                else()
+                    add_subdirectory(${${NAME}_SOURCE_DIR} ${${NAME}_BINARY_DIR})
                 endif()
                 set_property(GLOBAL PROPERTY ${DEPENDENCY}_ADDED TRUE)
             endif()
@@ -158,6 +237,8 @@ function(repoman__internal__handle_dependencies DIRECTORY)
     endif()
 endfunction()
 
+# repoman__internal__print_summary()
+# Prints a summary of requested and provided dependencies.
 function(repoman__internal__print_summary)
     get_property(REPOMAN_DEPENDENCIES GLOBAL PROPERTY GLOBAL_REPOMAN_DEPENDENCIES)
     if(REPOMAN_DEPENDENCIES)
@@ -171,8 +252,10 @@ function(repoman__internal__print_summary)
     endif()
 endfunction()
 
+# Run dependency resolution
 repoman__internal__handle_dependencies(${PROJECT_SOURCE_DIR})
 
+# Print summary after resolving all dependencies.
 if(SCRIPT_MODE)
     repoman__internal__print_summary()
     file(REMOVE_RECURSE "${FETCHCONTENT_BASE_DIR}")
@@ -184,6 +267,7 @@ else()
     endif()
 endif()
 
+# Prevent setup function to be called from outside after inclusion
 function(repoman__internal__handle_dependencies)
     message(FATAL_ERROR "Please do not call any RepoMan functions. Including the module is sufficient.")
 endfunction()
