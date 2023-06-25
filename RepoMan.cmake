@@ -183,3 +183,7 @@ else()
         set_property(GLOBAL PROPERTY REPOMAN_DEFER_INSTALLED TRUE)
     endif()
 endif()
+
+function(repoman__internal__handle_dependencies)
+    message(FATAL_ERROR "Please do not call any RepoMan functions. Including the module is sufficient.")
+endfunction()
