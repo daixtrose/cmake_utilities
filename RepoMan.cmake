@@ -8,12 +8,11 @@ else()
 endif()
 
 set(ENV{LC_ALL} C)
+set(REPOMAN_EDIT_DEPENDENCIES ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
 set(REPOMAN_DEPENDENCIES_FILE_NAME "dependencies.txt" CACHE STRING "The dependencies file name.")
 mark_as_advanced(REPOMAN_DEPENDENCIES_FILE_NAME)
 
 include(FetchContent)
-
-set(REPOMAN_EDIT_DEPS ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
 
 function(repoman__internal__handle_dependencies DIRECTORY)
     set(REPOMAN_DEPENDENCY_FILE "${DIRECTORY}/${REPOMAN_DEPENDENCIES_FILE_NAME}")
@@ -88,7 +87,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             list(APPEND REPOMAN_DEPENDENCIES ${REPOMAN_DEPENDENCY_NAME})
 
             set(DEPENDENCY_EDIT_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
-            if(EXISTS "${DEPENDENCY_EDIT_SOURCE_DIR}" OR REPOMAN_EDIT_DEPS)
+            if(EXISTS "${DEPENDENCY_EDIT_SOURCE_DIR}" OR REPOMAN_EDIT_DEPENDENCIES)
                 set(DEPENDENCY_SOURCE_DIR ${DEPENDENCY_EDIT_SOURCE_DIR})
             else()
                 set(DEPENDENCY_SOURCE_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-src)
@@ -103,7 +102,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
                                      SUBBUILD_DIR "${DEPENDENCY_SUBBUILD_DIR}")
             endif()
 
-            if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_EDIT_DEPS)
+            if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_EDIT_DEPENDENCIES)
                 FetchContent_GetProperties(${REPOMAN_DEPENDENCY_NAME} POPULATED IS_POPULATED)
                 if(NOT IS_POPULATED)
                     message(STATUS "Initializing in '${DEPENDENCY_SOURCE_DIR}'")
