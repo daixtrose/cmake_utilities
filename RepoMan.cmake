@@ -1,4 +1,3 @@
-#!/usr/bin/env -S cmake -P
 
 if(CMAKE_SCRIPT_MODE_FILE)
     set(SCRIPT_MODE TRUE)
