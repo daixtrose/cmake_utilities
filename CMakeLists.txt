@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
-project(cmake_utilities VERSION 1.1.0)
+cmake_minimum_required(VERSION 3.21.0)
 
-include(DependencyResolver.cmake)
-include(CompilerFlags.cmake)
+# Do not add a project() command here. Repoman cannot currently handle that correctly.
+
+include(${CMAKE_CURRENT_LIST_DIR}/RepoMan.cmake)
