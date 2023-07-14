@@ -12,6 +12,12 @@ Usage
 Including the module is sufficient. It will automatically look for a dependencies file in ``PROJECT_SOURCE_DIR`` and resolve the dependencies recursively.
 
 .. code-block:: cmake
+  # Optional: use workspace instead of default FetchContent directories
+  set(REPOMAN_DEPENDENCIES_USE_WORKSPACE ON CACHE BOOL "")
+
+  # Optional: use a custom file name for dependency files
+  set(REPOMAN_DEPENDENCIES_FILE_NAME "my_deps.txt" CACHE STRING "")
+
   include(RepoMan)
 
 Alternatively, you can also include it via add_subdirectory() or provide it via FetchContent():
@@ -25,7 +31,15 @@ Alternatively, you can also include it via add_subdirectory() or provide it via 
     GIT_TAG        main
   )
 
+  # Optional: use workspace instead of default FetchContent directories
+  set(REPOMAN_DEPENDENCIES_USE_WORKSPACE ON CACHE BOOL "")
+
+  # Optional: use a custom file name for dependency files
+  set(REPOMAN_DEPENDENCIES_FILE_NAME "my_deps.txt" CACHE STRING "")
+
   FetchContent_MakeAvailable(cmake_utilities)
+
+You can also run the RepoManResolve.cmake script as a command directly from the command line. This also works for non-CMake projects. This s called ``script mode``, in contrast to ``project mode``, which is the normal usage of the module though a CMake project file.
 
 
 In oder to actually do anything, the project root directory must contain a ``dependencies. txt`` file or a file with a different name, if ``REPOMAN_DEPENDENCIES_FILE_NAME`` is set accordingly.
