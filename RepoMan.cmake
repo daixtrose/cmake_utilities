@@ -40,9 +40,9 @@ The following variables modify the behaviour of the module. They are set to reas
 .. note::
   If you want to modify the variables in your project code, you should do so before including the module.
 
+.. variable:: REPOMAN_DEPENDENCIES_USE_WORKSPACE
+  Use the workspace defined by ``REPOMAN_DEPENDENCIES_WORKSPACE`` for dependency sources instead of the default FetchContent directories. This allows easier editing of dependency sources. Defaults to ``ON`` in script mode and ``OFF`` in project mode.
 
-.. variable:: REPOMAN_EDIT_DEPENDENCIES
-  Allow editing of dependencies. This puts the sources next to the main project to allow easier editing. If ``FALSE``, RepoMan will use the default ``FetchContent`` directories.
 
 .. variable:: REPOMAN_DEPENDENCIES_FILE_NAME
   The dependencies file name, ``dependencies.txt`` by default.
@@ -59,7 +59,7 @@ else()
 endif()
 
 # Module Configuration
-set(REPOMAN_EDIT_DEPENDENCIES ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
+set(REPOMAN_DEPENDENCIES_USE_WORKSPACE ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
 set(REPOMAN_DEPENDENCIES_FILE_NAME "dependencies.txt" CACHE STRING "The dependencies file name.")
 mark_as_advanced(REPOMAN_DEPENDENCIES_FILE_NAME)
 
@@ -151,9 +151,8 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             list(APPEND REPOMAN_DEPENDENCIES ${REPOMAN_DEPENDENCY_NAME})
 
             # Set depedencvy directories
-            set(DEPENDENCY_EDIT_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
-            if(EXISTS "${DEPENDENCY_EDIT_SOURCE_DIR}" OR REPOMAN_EDIT_DEPENDENCIES)
-                set(DEPENDENCY_SOURCE_DIR ${DEPENDENCY_EDIT_SOURCE_DIR})
+            if(REPOMAN_DEPENDENCIES_USE_WORKSPACE)
+                set(DEPENDENCY_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
             else()
                 set(DEPENDENCY_SOURCE_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-src)
             endif()
@@ -169,7 +168,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             endif()
 
             # Handle dependency
-            if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_EDIT_DEPENDENCIES)
+            if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_DEPENDENCIES_USE_WORKSPACE)
                 # Define and fetch dependencies
                 FetchContent_GetProperties(${REPOMAN_DEPENDENCY_NAME} POPULATED IS_POPULATED)
                 if(NOT IS_POPULATED)
