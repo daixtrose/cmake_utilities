@@ -9,7 +9,7 @@ This module handles project dependencies.
 Usage
 ^^^^^
 
-Including the module is suficient. It will automatically look for a dependencies file in ``PROJECT_SOURCE_DIR`` and resolve the dependencies recursively.
+Including the module is sufficient. It will automatically look for a dependencies file in ``PROJECT_SOURCE_DIR`` and resolve the dependencies recursively.
 
 .. code-block:: cmake
   include(RepoMan)
@@ -29,9 +29,9 @@ Alternatively, you can also include it via add_subdirectory() or provide it via 
 
 
 In oder to actually do anything, the project root directory must contain a ``dependencies. txt`` file or a file with a different name, if ``REPOMAN_DEPENDENCIES_FILE_NAME`` is set accordingly.
-This file must contain one line for each dependency, in the format given to ``FetchContent()``. All arguments of ``FetchContent()`` are supported. Empty and commented lines are also alloowed and will be ignored.
+This file must contain one line for each dependency, in the format given to ``FetchContent()``. All arguments of ``FetchContent()`` are supported. Empty and commented lines are also allowed and will be ignored.
 
-Each dependency defined this way will be provided and included via ``add_subdirectory()``. Any sub-dependencies in a dependency's ``dependencies. txt`` will also be added. If a dependency has already been defined ina parent project, that definition takes precedence, so higher-level projects can override their child dependency's requirements.
+Each dependency defined this way will be provided and included via ``add_subdirectory()``. Any sub-dependencies in a dependency's ``dependencies.txt`` will also be added. If a dependency has already been defined in a parent project, that definition takes precedence, so higher-level projects can override their child dependency's requirements.
 
 Variables
 ^^^^^^^^^
