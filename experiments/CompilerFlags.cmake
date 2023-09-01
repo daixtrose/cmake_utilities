@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-include_guard()
+include_guard(GLOBAL)
 
 project(compiler_flags VERSION 1.1.0)
 
