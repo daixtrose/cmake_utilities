@@ -9,9 +9,21 @@ This module handles project dependencies.
 Usage
 ^^^^^
 
-Including the module is suficient. It will automatically look for a dependencies file in ``PROJECT_SOURCE_DIR`` and resolve the dependencies recursively.
+Including the module is sufficient. It will automatically look for a dependencies file in ``PROJECT_SOURCE_DIR`` and resolve the dependencies recursively.
 
 .. code-block:: cmake
+  # Optional: use workspace instead of default FetchContent directories
+  set(REPOMAN_DEPENDENCIES_USE_WORKSPACE ON CACHE BOOL "")
+
+  # Optional: set a custom name and/or location for the workspace
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "../" CACHE PATH "")                     # use automatically generated directory name next to current project
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "../my_ws" CACHE PATH "")                # use custom directory name next to current project
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "my_ws" CACHE PATH "")                   # use custom name inside current project build directory
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "/home/dev/sources/my_ws" CACHE PATH "") # use absolute path
+
+  # Optional: use a custom file name for dependency files
+  set(REPOMAN_DEPENDENCIES_FILE_NAME "my_deps.txt" CACHE STRING "")
+
   include(RepoMan)
 
 Alternatively, you can also include it via add_subdirectory() or provide it via FetchContent():
@@ -25,13 +37,27 @@ Alternatively, you can also include it via add_subdirectory() or provide it via 
     GIT_TAG        main
   )
 
+  # Optional: use workspace instead of default FetchContent directories
+  set(REPOMAN_DEPENDENCIES_USE_WORKSPACE ON CACHE BOOL "")
+
+  # Optional: set a custom name and/or location for the workspace
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "../" CACHE PATH "")                     # use automatically generated directory name next to current project
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "../my_ws" CACHE PATH "")                # use custom directory name next to current project
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "my_ws" CACHE PATH "")                   # use custom name inside current project build directory
+  set(REPOMAN_DEPENDENCIES_WORKSPACE "/home/dev/sources/my_ws" CACHE PATH "") # use absolute path
+
+  # Optional: use a custom file name for dependency files
+  set(REPOMAN_DEPENDENCIES_FILE_NAME "my_deps.txt" CACHE STRING "")
+
   FetchContent_MakeAvailable(cmake_utilities)
+
+You can also run the RepoManResolve.cmake script as a command directly from the command line. This also works for non-CMake projects. This s called ``script mode``, in contrast to ``project mode``, which is the normal usage of the module though a CMake project file.
 
 
 In oder to actually do anything, the project root directory must contain a ``dependencies. txt`` file or a file with a different name, if ``REPOMAN_DEPENDENCIES_FILE_NAME`` is set accordingly.
-This file must contain one line for each dependency, in the format given to ``FetchContent()``. All arguments of ``FetchContent()`` are supported. Empty and commented lines are also alloowed and will be ignored.
+This file must contain one line for each dependency, in the format given to ``FetchContent()``. All arguments of ``FetchContent()`` are supported. Empty and commented lines are also allowed and will be ignored.
 
-Each dependency defined this way will be provided and included via ``add_subdirectory()``. Any sub-dependencies in a dependency's ``dependencies. txt`` will also be added. If a dependency has already been defined ina parent project, that definition takes precedence, so higher-level projects can override their child dependency's requirements.
+Each dependency defined this way will be provided and included via ``add_subdirectory()``. Any sub-dependencies in a dependency's ``dependencies.txt`` will also be added. If a dependency has already been defined in a parent project, that definition takes precedence, so higher-level projects can override their child dependency's requirements.
 
 Variables
 ^^^^^^^^^
@@ -40,15 +66,24 @@ The following variables modify the behaviour of the module. They are set to reas
 .. note::
   If you want to modify the variables in your project code, you should do so before including the module.
 
+.. variable:: REPOMAN_DEPENDENCIES_USE_WORKSPACE
+  Use the workspace defined by ``REPOMAN_DEPENDENCIES_WORKSPACE`` for dependency sources instead of the default FetchContent directories. This allows easier editing of dependency sources. Defaults to ``ON`` in script mode and ``OFF`` in project mode.
 
-.. variable:: REPOMAN_EDIT_DEPENDENCIES
-  Allow editing of dependencies. This puts the sources next to the main project to allow easier editing. If ``FALSE``, RepoMan will use the default ``FetchContent`` directories.
+.. variable:: REPOMAN_DEPENDENCIES_WORKSPACE
+  Where to put the dependency sources. This can be either empty, a name, a relative path or an absolute path.
+
+  An empty string will use the defaults: a directory name generated from the current project directory, in the current project's parent directory.
+  A name will use that given name, in the current project directory.
+  A relative or absolute path will use that path as a base. A new directory will be generated only if the given path is a starting substring of the current project path,
+
+  This is ignored unless ``REPOMAN_DEPENDENCIES_USE_WORKSPACE`` is ``ON``.
 
 .. variable:: REPOMAN_DEPENDENCIES_FILE_NAME
   The dependencies file name, ``dependencies.txt`` by default.
 
 #]=======================================================================]
 
+cmake_path(GET CMAKE_SOURCE_DIR FILENAME PROJECT_DIRECTORY_NAME)
 if(CMAKE_SCRIPT_MODE_FILE)
     set(SCRIPT_MODE TRUE)
     # If RepoMan is run as a script (outside of a CMake project), the variables below do not have any meaning by default.
@@ -59,9 +94,22 @@ else()
 endif()
 
 # Module Configuration
-set(REPOMAN_EDIT_DEPENDENCIES ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
+set(REPOMAN_DEPENDENCIES_USE_WORKSPACE ${SCRIPT_MODE} CACHE BOOL "Allow editing of dependencies. This puts the sources next to the main project to allow easier editing.")
 set(REPOMAN_DEPENDENCIES_FILE_NAME "dependencies.txt" CACHE STRING "The dependencies file name.")
 mark_as_advanced(REPOMAN_DEPENDENCIES_FILE_NAME)
+
+if(REPOMAN_DEPENDENCIES_WORKSPACE)
+    file(REAL_PATH "${REPOMAN_DEPENDENCIES_WORKSPACE}" REPOMAN_WORKSPACE BASE_DIRECTORY "${CMAKE_SOURCE_DIR}" EXPAND_TILDE)
+    cmake_path(IS_PREFIX REPOMAN_WORKSPACE "${CMAKE_SOURCE_DIR}" NORMALIZE IS_PREFIX)
+    cmake_path(COMPARE "${REPOMAN_WORKSPACE}" EQUAL "${CMAKE_SOURCE_DIR}" IS_PROJECT_DIR)
+    if(IS_PREFIX OR IS_PROJECT_DIR)
+        file(REAL_PATH "${REPOMAN_WORKSPACE}/${PROJECT_DIRECTORY_NAME}-dependencies" REPOMAN_WORKSPACE)
+    endif()
+else()
+    file(REAL_PATH "${CMAKE_SOURCE_DIR}/../${PROJECT_DIRECTORY_NAME}-dependencies" REPOMAN_WORKSPACE_INIT EXPAND_TILDE)
+    set(REPOMAN_DEPENDENCIES_WORKSPACE "${REPOMAN_WORKSPACE_INIT}" CACHE STRING "The base workspace for projects.")
+    set(REPOMAN_WORKSPACE "${REPOMAN_DEPENDENCIES_WORKSPACE}")
+endif()
 
 include(FetchContent)
 
@@ -79,13 +127,6 @@ function(repoman__internal__handle_dependencies DIRECTORY)
     if(EXISTS "${REPOMAN_DEPENDENCY_FILE}")
         message(STATUS "Resolving dependencies of project ${DIRECTORY}")
 
-        cmake_path(GET CMAKE_SOURCE_DIR FILENAME PROJECT_DIRECTORY_NAME)
-        file(REAL_PATH "${CMAKE_SOURCE_DIR}/../${PROJECT_DIRECTORY_NAME}-dependencies" REPOMAN_WORKSPACE_INIT EXPAND_TILDE)
-        set(REPOMAN_WORKSPACE "${REPOMAN_WORKSPACE_INIT}" CACHE STRING "The base workspace for projects.")
-        if(NOT REPOMAN_WORKSPACE)
-            message(WARNING "REPOMAN_WORKSPACE is empty, falling back to '${CMAKE_BINARY_DIR}'.")
-            set(REPOMAN_WORKSPACE "${CMAKE_BINARY_DIR}" CACHE STRING "" FORCE)
-        endif()
         file(MAKE_DIRECTORY "${REPOMAN_WORKSPACE}")
 
         if(NOT SCRIPT_MODE)
@@ -151,9 +192,8 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             list(APPEND REPOMAN_DEPENDENCIES ${REPOMAN_DEPENDENCY_NAME})
 
             # Set depedencvy directories
-            set(DEPENDENCY_EDIT_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
-            if(EXISTS "${DEPENDENCY_EDIT_SOURCE_DIR}" OR REPOMAN_EDIT_DEPENDENCIES)
-                set(DEPENDENCY_SOURCE_DIR ${DEPENDENCY_EDIT_SOURCE_DIR})
+            if(REPOMAN_DEPENDENCIES_USE_WORKSPACE)
+                set(DEPENDENCY_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
             else()
                 set(DEPENDENCY_SOURCE_DIR ${FETCHCONTENT_BASE_DIR}/${REPOMAN_DEPENDENCY_NAME}-src)
             endif()
@@ -169,7 +209,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             endif()
 
             # Handle dependency
-            if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_EDIT_DEPENDENCIES)
+            if(NOT EXISTS "${DEPENDENCY_SOURCE_DIR}" OR NOT REPOMAN_DEPENDENCIES_USE_WORKSPACE)
                 # Define and fetch dependencies
                 FetchContent_GetProperties(${REPOMAN_DEPENDENCY_NAME} POPULATED IS_POPULATED)
                 if(NOT IS_POPULATED)
