@@ -83,6 +83,9 @@ The following variables modify the behaviour of the module. They are set to reas
 
 #]=======================================================================]
 
+# Update this if the dependencies file format changes
+set(DEPENDENCIES_FILE_REQUIRED_VERSION "v1.0.0")
+
 cmake_path(GET CMAKE_SOURCE_DIR FILENAME PROJECT_DIRECTORY_NAME)
 if(CMAKE_SCRIPT_MODE_FILE)
     set(SCRIPT_MODE TRUE)
@@ -136,6 +139,18 @@ function(repoman__internal__handle_dependencies DIRECTORY)
 
         unset(REPOMAN_DEPENDENCIES)
         file(STRINGS "${REPOMAN_DEPENDENCY_FILE}" REPOMAN_DEPENDENCY_SPECS ENCODING UTF-8)
+
+        list(GET REPOMAN_DEPENDENCY_SPECS 0 VERSION_INFO)
+        if(VERSION_INFO MATCHES "Version: *(v[0-9\.]+)")
+            set(DEPENDENCIES_FILE_VERSION "${CMAKE_MATCH_1}")
+            list(POP_FRONT REPOMAN_DEPENDENCY_SPECS)
+        else()
+            set(DEPENDENCIES_FILE_VERSION "<undefined>")
+        endif()
+        if(NOT DEPENDENCIES_FILE_REQUIRED_VERSION STREQUAL DEPENDENCIES_FILE_VERSION)
+            message(FATAL_ERROR "Dependencies file '${REPOMAN_DEPENDENCY_FILE}' has version '${DEPENDENCIES_FILE_VERSION}', but required version is '${DEPENDENCIES_FILE_REQUIRED_VERSION}'")
+        endif()
+
         foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCY_SPECS)
             # Filter out empty or commented lines
             if(DEPENDENCY MATCHES "^ *#.*" OR DEPENDENCY STREQUAL "")
