@@ -280,10 +280,9 @@ function(repoman__internal__handle_dependencies DIRECTORY)
 
             # Add not-yet included dependencies
             if(NOT ADDED AND ${NAME}_POPULATED)
-                if(SCRIPT_MODE)
-                    # add_subdirectory() does not work in script mode, just call the setup function recursively
-                    repoman__internal__handle_dependencies(${${NAME}_SOURCE_DIR})
-                else()
+                repoman__internal__handle_dependencies(${${NAME}_SOURCE_DIR})
+                if(NOT SCRIPT_MODE)
+                    # add_subdirectory() does not work in script mode
                     add_subdirectory(${${NAME}_SOURCE_DIR} ${${NAME}_BINARY_DIR})
                 endif()
                 set_property(GLOBAL PROPERTY ${DEPENDENCY}_ADDED TRUE)
