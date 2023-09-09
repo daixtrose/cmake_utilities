@@ -250,9 +250,17 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             else()
                 # Dependency already exists, show status information
                 string(TOLOWER ${REPOMAN_DEPENDENCY_NAME} LOWER_NAME)
-                set(${LOWER_NAME}_SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}")
-                set(${LOWER_NAME}_BINARY_DIR "${DEPENDENCY_BINARY_DIR}")
-                set(${LOWER_NAME}_POPULATED TRUE)
+                set(FETCH_CONTENT_PREFIX "_FetchContent_${LOWER_NAME}")
+
+                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_sourceDir")
+                set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_sourceDir" "${DEPENDENCY_SOURCE_DIR}")
+
+                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_binaryDir")
+                set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_binaryDir" "${DEPENDENCY_BINARY_DIR}")
+
+                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_populated")
+                set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_populated" TRUE)
+
                 file(MAKE_DIRECTORY "${DEPENDENCY_BINARY_DIR}")
 
                 if(OVERWRITE_REVISION AND NOT REPOMAN_DEPENDENCY_REVISION STREQUAL OVERWRITE_REVISION)
@@ -280,6 +288,8 @@ function(repoman__internal__handle_dependencies DIRECTORY)
         foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCIES)
             get_property(ADDED GLOBAL PROPERTY ${DEPENDENCY}_ADDED)
             string(TOLOWER ${DEPENDENCY} NAME)
+
+            FetchContent_GetProperties(${NAME})
 
             # Add not-yet included dependencies
             if(NOT ADDED AND ${NAME}_POPULATED)
