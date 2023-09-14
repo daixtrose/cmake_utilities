@@ -85,7 +85,13 @@ target_link_libraries(
     lib_A
     lib_B
     fmt::fmt
-)    
+)
+
+# Only build an run tests if this project is compiled as top-level project
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    enable_testing()
+    add_subdirectory(test-catch)
+endif()
 ```
 
 The dependencies to the project are defined in a separate file called `dependencies.txt`. Note, that the filename can be freely chosen by setting the variable `REPOMAN_DEPENDENCIES_FILE_NAME` accordingly before calling `FetchContent_MakeAvailable(cmake_utilities)`, e.g.: 
@@ -125,3 +131,35 @@ libFreeAssange GIT_REPOSITORY https://github.com/dep-heaven/libFreeAssange GIT_T
 The utilities will ensure that these settings are propagated through the whole tree before the dependencies itself are populated. This means all other dependencies will get their own settings regarding this specific dependency overwritten.
 Hence, a specific oder of dependencies in `dependencies.txt` is not required to be maintained.      
 
+The file `test-catch/CMakeLists.txt` which is conditionally included by the top-level `CMakeLists.txt` can now rely on the dependency to [`catch2`](https://github.com/catchorg/Catch2) already being populated and hence reads as follows: 
+
+```cmake
+cmake_minimum_required(VERSION 3.16)
+
+include(CTest)
+
+# Prepare use of extra functionality available in Catch2
+list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
+include(Catch)
+
+add_executable(test_tool_1 
+    ../src/fn.cpp
+    test_main.cpp
+    test_tool_1.cpp)
+
+target_include_directories(test_tool_1
+    PUBLIC
+    ../include)
+
+target_link_libraries(test_tool_1
+    PUBLIC
+    lib_A
+    lib_B
+    Catch2::Catch2
+    fmt::fmt
+)
+
+# Make use of the extra functionality available in Catch2
+catch_discover_tests(test_tool_1)
+
+```
