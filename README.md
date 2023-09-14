@@ -283,8 +283,67 @@ After the CMake run simply issue the command
 make repoman-status
 ```
 
-which e.g. yields
+which on an unmodified source tree yields
 
 ```
-TODO
+-- Dependency 'lib_A': ok (master-yoda)
+-- Dependency 'lib_B': ok (master-yoda)
+-- Dependency 'libFreeAssange': ok (belmarsh)
+Built target repoman-status
 ```
+
+For a modified source tree the result would be:
+
+```
+-- Dependency 'lib_A': 
+Status:
+HEAD detached at origin/master-yoda
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/lib_A.cpp
+
+no changes added to commit (use "git add" and/or "git commit -a")
+-- Dependency 'lib_B': ok (master-yoda)
+-- Dependency 'libFreeAssange': ok (belmarsh)
+Built target repoman-status
+```
+
+Note that all git dependencies are cloned in detached state. One can switch to a specific branch, e.g. 
+
+```bash
+tool_1/build$ cd ../ws/lib_A/
+tool_1/ws/lib_A$ git checkout master-yoda
+tool_1/ws/lib_A$ cd -
+tool_1/build$ make repoman-status
+```
+
+yields
+
+```
+-- Dependency 'lib_A': 
+Status:
+On branch master-yoda
+Your branch is up to date with 'origin/master-yoda'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/lib_A.cpp
+
+no changes added to commit (use "git add" and/or "git commit -a")
+-- Dependency 'lib_B': ok (master-yoda)
+-- Dependency 'libFreeAssange': ok (belmarsh)
+Built target repoman-status
+```
+
+This feature helps you keep track of all changes made across all dependencies. For future versions of this utility project it is planned to add further bulk operations like e.g. creating a branch. In the meantime a workaround is using [`git-bulk`](https://github.com/nschlimm/git-bulk).
+
+## Some Remarks
+
+CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature is a quite powerful and flexible tool. Since these utilities accept any valid argument list for `FetchContent` as a line in the `dependencies.txt` file, it is even possible to run even more elaborated features like [Integrating With `find_package()`](https://cmake.org/cmake/help/latest/module/FetchContent.html#integrating-with-find-package).
+
+
+
+
+
