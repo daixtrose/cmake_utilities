@@ -76,7 +76,7 @@ if(GIT_STATUS MATCHES ".*-dirty")
                     OUTPUT_VARIABLE GIT_STATUS
 	    	        OUTPUT_STRIP_TRAILING_WHITESPACE
 		            COMMAND_ERROR_IS_FATAL ANY)
-    string(APPEND STATUS "\nStatus:\n ${GIT_STATUS}")
+    string(APPEND STATUS "\nStatus:\n${GIT_STATUS}")
 endif()
 
 # Print status
