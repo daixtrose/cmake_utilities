@@ -272,11 +272,11 @@ function(repoman__internal__handle_dependencies DIRECTORY)
                     set(EXPECTED_REVISION ${REPOMAN_DEPENDENCY_REVISION})
                     set(EXPECTED_REMOTE ${REPOMAN_DEPENDENCY_URI})
                     include(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/RepoManStatus.cmake)
-
-                    set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_EXPECTED_REVISION ${REPOMAN_DEPENDENCY_REVISION})
-                    set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_EXPECTED_REMOTE ${REPOMAN_DEPENDENCY_URI})
                 endif()
             endif()
+
+            set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_EXPECTED_REVISION ${REPOMAN_DEPENDENCY_REVISION})
+            set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_EXPECTED_REMOTE ${REPOMAN_DEPENDENCY_URI})
         endforeach()
 
         # Include dependencies as sub-projects and resolve their dependencies
