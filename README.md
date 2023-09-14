@@ -1,3 +1,6 @@
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Build Status](https://img.shields.io/github/actions/workflow/status/daixtrose/cmake_utilities/test_tool_1.yml)
+
 <h1>CMake Utilities - Dependency Management Done Right</h1>
 
 - [TL;DR](#tldr)
