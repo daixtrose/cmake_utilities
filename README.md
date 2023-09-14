@@ -1,4 +1,10 @@
-# cmake_utilities
+# CMake Utilities 
+
+## TL;DR
+
+CMake Utilities is mainly a collection of utilities to make dependency management as easy as possible.     
+
+
 
 CMake utilities addressing configuration management and dependency hell mitigation.
 
