@@ -252,13 +252,8 @@ function(repoman__internal__handle_dependencies DIRECTORY)
                 string(TOLOWER ${REPOMAN_DEPENDENCY_NAME} LOWER_NAME)
                 set(FETCH_CONTENT_PREFIX "_FetchContent_${LOWER_NAME}")
 
-                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_sourceDir")
                 set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_sourceDir" "${DEPENDENCY_SOURCE_DIR}")
-
-                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_binaryDir")
                 set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_binaryDir" "${DEPENDENCY_BINARY_DIR}")
-
-                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_populated")
                 set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_populated" TRUE)
 
                 file(MAKE_DIRECTORY "${DEPENDENCY_BINARY_DIR}")
