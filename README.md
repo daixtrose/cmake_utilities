@@ -184,7 +184,7 @@ CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent
 
 With the utilities presented here this is easily overcome. In addition, it is guaranteed that the network traffic *and* the disc usage are both minimized.   
 
-All one has to do is declare a deviation from the standard CMake behavior and set a custom filesystem location (directory) for the so-called workspace, i.e. the place where all dependencies are copied to on the filesystem. As a user, you have several choice:
+All one has to do is declare a deviation from the standard CMake behavior and set a custom filesystem location (directory) for the so-called workspace, i.e. the place where all dependencies are copied to on the filesystem. As a user, you have several choices:
 
 ### Variant 1: A subdirectory below the top-level directory 
 
