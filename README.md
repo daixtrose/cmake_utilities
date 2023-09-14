@@ -1,6 +1,5 @@
 <h1>CMake Utilities - Dependency Management Done Right</h1>
 
-    - [TL;DR](#tldr)
 - [TL;DR](#tldr)
 - [Quick Start](#quick-start)
 - [A Quick First Example](#a-quick-first-example)
