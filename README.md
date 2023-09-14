@@ -180,9 +180,9 @@ catch_discover_tests(test_tool_1)
 
 ## Editing Code and Debugging
 
-CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature is rather limited when code changes are required not only in the top-level project, but also in dependencies. CMake pulls all  files into a subdirectory of the build directory, namely [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps`. There they are not under version control. This makes code editing and tracking changes a pain. Also, building and debugging multiple variants (e.g. differing in compiler flags) requires to download or clone all dependencies multiple times into different build directories. This does not scale well with large dependency trees.
+CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature is rather limited when code changes are required not only in the top-level project, but also in dependencies. CMake pulls all files into a subdirectory of the build directory, namely [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps`. There they are under version control, but may be overwritten without question on subsequent cmake calls - or accidentally deleted by the user when cleaning up the build directory. This makes code editing and tracking changes a pain. Also, building and debugging multiple variants (e.g. differing in compiler flags) requires to download or clone all dependencies multiple times into different build directories. This does not scale well with large dependency trees.
 
-With the utilities presented here this is easily overcome. In addition, it is guaranteed that the network traffic *and* the disc usage are both minimized.   
+With the utilities presented here this is easily overcome. In addition, it is guaranteed that the network traffic *and* the disc usage are both minimized - at least for one top level project. For multiple top level projects one has to take extra measures based on the options presented here.
 
 All one has to do is declare a deviation from the standard CMake behavior and set a custom filesystem location (directory) for the so-called workspace, i.e. the place where all dependencies are copied to on the filesystem. As a user, you have several choices:
 
@@ -215,6 +215,13 @@ yields
     ├── lib_A
     ├── lib_B
     └── libFreeAssange
+```
+
+If you decide to use this variant, make sure the workspace is mentioned in the `.gitignore` file. Otherwise `git` itself or any IDE integration of it may get confused.  
+
+```cmake
+# Ignore the directory where all dependencies are cloned to
+ws/
 ```
 
 ### Variant 2: A named subdirectory besides the top-level directory 
