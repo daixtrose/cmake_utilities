@@ -35,6 +35,8 @@ Although this project was designed to meet the needs of C++ developers, extra ef
   mkdir build
   cd build/
   cmake ..
+  make
+  make test
   ```
 - People who want to understand the motivation and history of this project and how it solves all problems that come with [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules), please check out [this talk](https://www.daixtrose.de/talk/saying-goodbye-to-dependency-hell/).
 
