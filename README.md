@@ -129,7 +129,7 @@ libFreeAssange GIT_REPOSITORY https://github.com/dep-heaven/libFreeAssange GIT_T
 ```
 
 The utilities will ensure that these settings are propagated through the whole tree before the dependencies itself are populated. This means all other dependencies will get their own settings regarding this specific dependency overwritten.
-Hence, a specific oder of dependencies in `dependencies.txt` is not required to be maintained.      
+Hence, a specific order of dependencies in `dependencies.txt` is not required to be maintained.      
 
 The file `test-catch/CMakeLists.txt` which is conditionally included by the top-level `CMakeLists.txt` can now rely on the dependency to [`catch2`](https://github.com/catchorg/Catch2) already being populated and hence reads as follows: 
 
@@ -140,6 +140,7 @@ include(CTest)
 
 # Prepare use of extra functionality available in Catch2
 list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/contrib)
+
 include(Catch)
 
 add_executable(test_tool_1 
@@ -166,11 +167,11 @@ catch_discover_tests(test_tool_1)
 
 ## Editing Code and Debugging
 
-CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature has one drawback when it code changes are required not only in the top-level project, but also in dependencies. All files are pulled into a subdirectory of the build directory, namely [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps`. There they are not under version control. This makes code editing a pain. Also, building and debugging multiple variants (e.g. differing in compiler flags) requires to download or clone all dependencies multiple times into different build directories. This does not scale well with large dependency trees.
+CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature is rather limited when code changes are required not only in the top-level project, but also in dependencies. CMake pulls all  files into a subdirectory of the build directory, namely [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps`. There they are not under version control. This makes code editing and tracking changes a pain. Also, building and debugging multiple variants (e.g. differing in compiler flags) requires to download or clone all dependencies multiple times into different build directories. This does not scale well with large dependency trees.
 
-With the utilities presented here this is easily overcome. It is guaranteed that the network traffic *and* the disc usage are both minimized with the approach presented here.   
+With the utilities presented here this is easily overcome. In addition, it is guaranteed that the network traffic *and* the disc usage are both minimized.   
 
-All one has to do is declare a deviation from the standard CMake behavior and set a custom filesystem location (directory) for the so-called workspace, i.e. the place where all dependencies are copied to on the filesystem. 
+All one has to do is declare a deviation from the standard CMake behavior and set a custom filesystem location (directory) for the so-called workspace, i.e. the place where all dependencies are copied to on the filesystem. As a user, you have several choice:
 
 ### Variant 1: A subdirectory below the top-level directory 
 
