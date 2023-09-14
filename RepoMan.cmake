@@ -83,6 +83,9 @@ The following variables modify the behaviour of the module. They are set to reas
 
 #]=======================================================================]
 
+# Update this if the dependencies file format changes
+set(DEPENDENCIES_FILE_REQUIRED_VERSION "v1.0.0")
+
 cmake_path(GET CMAKE_SOURCE_DIR FILENAME PROJECT_DIRECTORY_NAME)
 if(CMAKE_SCRIPT_MODE_FILE)
     set(SCRIPT_MODE TRUE)
@@ -136,6 +139,18 @@ function(repoman__internal__handle_dependencies DIRECTORY)
 
         unset(REPOMAN_DEPENDENCIES)
         file(STRINGS "${REPOMAN_DEPENDENCY_FILE}" REPOMAN_DEPENDENCY_SPECS ENCODING UTF-8)
+
+        list(GET REPOMAN_DEPENDENCY_SPECS 0 VERSION_INFO)
+        if(VERSION_INFO MATCHES "Version: *(v[0-9\.]+)")
+            set(DEPENDENCIES_FILE_VERSION "${CMAKE_MATCH_1}")
+            list(POP_FRONT REPOMAN_DEPENDENCY_SPECS)
+        else()
+            set(DEPENDENCIES_FILE_VERSION "<undefined>")
+        endif()
+        if(NOT DEPENDENCIES_FILE_REQUIRED_VERSION STREQUAL DEPENDENCIES_FILE_VERSION)
+            message(FATAL_ERROR "Dependencies file '${REPOMAN_DEPENDENCY_FILE}' has version '${DEPENDENCIES_FILE_VERSION}', but required version is '${DEPENDENCIES_FILE_REQUIRED_VERSION}'")
+        endif()
+
         foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCY_SPECS)
             # Filter out empty or commented lines
             if(DEPENDENCY MATCHES "^ *#.*" OR DEPENDENCY STREQUAL "")
@@ -235,9 +250,17 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             else()
                 # Dependency already exists, show status information
                 string(TOLOWER ${REPOMAN_DEPENDENCY_NAME} LOWER_NAME)
-                set(${LOWER_NAME}_SOURCE_DIR "${DEPENDENCY_SOURCE_DIR}")
-                set(${LOWER_NAME}_BINARY_DIR "${DEPENDENCY_BINARY_DIR}")
-                set(${LOWER_NAME}_POPULATED TRUE)
+                set(FETCH_CONTENT_PREFIX "_FetchContent_${LOWER_NAME}")
+
+                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_sourceDir")
+                set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_sourceDir" "${DEPENDENCY_SOURCE_DIR}")
+
+                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_binaryDir")
+                set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_binaryDir" "${DEPENDENCY_BINARY_DIR}")
+
+                define_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_populated")
+                set_property(GLOBAL PROPERTY "${FETCH_CONTENT_PREFIX}_populated" TRUE)
+
                 file(MAKE_DIRECTORY "${DEPENDENCY_BINARY_DIR}")
 
                 if(OVERWRITE_REVISION AND NOT REPOMAN_DEPENDENCY_REVISION STREQUAL OVERWRITE_REVISION)
@@ -254,6 +277,9 @@ function(repoman__internal__handle_dependencies DIRECTORY)
                     set(EXPECTED_REVISION ${REPOMAN_DEPENDENCY_REVISION})
                     set(EXPECTED_REMOTE ${REPOMAN_DEPENDENCY_URI})
                     include(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/RepoManStatus.cmake)
+
+                    set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_EXPECTED_REVISION ${REPOMAN_DEPENDENCY_REVISION})
+                    set_property(GLOBAL PROPERTY ${REPOMAN_DEPENDENCY_NAME}_EXPECTED_REMOTE ${REPOMAN_DEPENDENCY_URI})
                 endif()
             endif()
         endforeach()
@@ -263,12 +289,13 @@ function(repoman__internal__handle_dependencies DIRECTORY)
             get_property(ADDED GLOBAL PROPERTY ${DEPENDENCY}_ADDED)
             string(TOLOWER ${DEPENDENCY} NAME)
 
+            FetchContent_GetProperties(${NAME})
+
             # Add not-yet included dependencies
             if(NOT ADDED AND ${NAME}_POPULATED)
-                if(SCRIPT_MODE)
-                    # add_subdirectory() does not work in script mode, just call the setup function recursively
-                    repoman__internal__handle_dependencies(${${NAME}_SOURCE_DIR})
-                else()
+                repoman__internal__handle_dependencies(${${NAME}_SOURCE_DIR})
+                if(NOT SCRIPT_MODE)
+                    # add_subdirectory() does not work in script mode
                     add_subdirectory(${${NAME}_SOURCE_DIR} ${${NAME}_BINARY_DIR})
                 endif()
                 set_property(GLOBAL PROPERTY ${DEPENDENCY}_ADDED TRUE)
@@ -286,8 +313,15 @@ function(repoman__internal__print_summary)
         foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCIES)
             get_property(REVISION GLOBAL PROPERTY ${DEPENDENCY}_REVISION)
             get_property(ALL_REVISIONS GLOBAL PROPERTY ${DEPENDENCY}_REQUESTED_REVISIONS)
-            string(REPLACE ";" ", " ALL_REVISIONS "${ALL_REVISIONS}")
-            message(STATUS "    ${DEPENDENCY} @ ${REVISION}, chosen from [${ALL_REVISIONS}]")
+
+            list(LENGTH ALL_REVISIONS REVISION_COUNT)
+            if(REVISION_COUNT GREATER 1)
+                string(REPLACE ";" ", " ALL_REVISIONS "${ALL_REVISIONS}")
+                set(CHOICES ", chosen from [${ALL_REVISIONS}]")
+            else()
+                set(CHOICES "")
+            endif()
+            message(STATUS "    ${DEPENDENCY} @ ${REVISION}${CHOICES}")
         endforeach()
     endif()
 endfunction()
@@ -300,6 +334,24 @@ if(SCRIPT_MODE)
     repoman__internal__print_summary()
     file(REMOVE_RECURSE "${FETCHCONTENT_BASE_DIR}")
 else()
+    if(NOT TARGET repoman-status)
+        get_property(REPOMAN_DEPENDENCIES GLOBAL PROPERTY GLOBAL_REPOMAN_DEPENDENCIES)
+
+        if(REPOMAN_DEPENDENCIES)
+            foreach(DEPENDENCY IN LISTS REPOMAN_DEPENDENCIES)
+                get_property(DEPENDENCY_SOURCE_DIR GLOBAL PROPERTY ${DEPENDENCY}_SOURCE_DIR)
+                get_property(DEPENDENCY_EXPECTED_REVISION GLOBAL PROPERTY ${DEPENDENCY}_EXPECTED_REVISION)
+                get_property(DEPENDENCY_EXPECTED_REMOTE GLOBAL PROPERTY ${DEPENDENCY}_EXPECTED_REMOTE)
+                if (EXISTS ${${DEPENDENCY}_SOURCE_DIR}/.git)
+                    list(APPEND REPOMAN_STATUS_COMMANDS "COMMAND" "${CMAKE_COMMAND}" "-DNAME=${DEPENDENCY}" "-DREPO=${${DEPENDENCY}_SOURCE_DIR}" "-DEXPECTED_REVISION=${DEPENDENCY_EXPECTED_REVISION}" "-DEXPECTED_REMOTE=${DEPENDENCY_EXPECTED_REMOTE}" "-P" "${CMAKE_CURRENT_LIST_DIR}/RepoManStatus.cmake")
+                endif()
+            endforeach()
+
+            add_custom_target(repoman-status
+                              ${REPOMAN_STATUS_COMMANDS})
+        endif()
+    endif()
+
     get_property(DEFER_INSTALLED GLOBAL PROPERTY REPOMAN_DEFER_INSTALLED)
     if(NOT DEFER_INSTALLED)
         cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" ID repo_man_summary CALL repoman__internal__print_summary)
