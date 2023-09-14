@@ -6,9 +6,9 @@ CMake Utilities is a collection of utilities which help escaping the dependency 
 
 It extends CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature such that all dependency information is collected in a separate file in the top-level of the repository, thereby avoiding repetitive code in the CMake files and enabling efficient configuration management.
 
-In addition, these utilities provide support for developers to apply code changes across dependencies and the dependent code base. When configured accordingly, CMake will clone code or fetch binaries from dependencies (and recursively dependencies of dependencies) and put them outside the standard _deps structure, thereby making cross-codebase code editing an easy task. The dependency hierarchy tree gets unfolded into a flat structure. Each dependency is fetched or cloned exactly once.  
+In addition, these utilities provide support for developers to apply code changes distributed across dependencies and the dependent code base. When configured accordingly, these utilities will put dependencies (and dependencies of dependencies) outside the standard `${CMAKE_BINARY_DIR}/_deps` structure to a user-defined place in the filesystem. The dependency hierarchy tree gets unfolded into a flat structure.  Debugging information will be adapted accordingly. It is possible to have mutiple build directories point to the very same codebase.
 
-Although this project was designed to meet the needs of C++ developers, extra effort went into not having any dependency beyond CMake itself, so this project can be used in other context, e.g. as a drop-in replacement for [`svn externals`](https://svnbook.red-bean.com/en/1.7/svn.advanced.externals.html) in a git context.      
+Although this project was designed to meet the needs of C++ developers, extra effort went into not having any dependency beyond CMake itself, so this project can be used in other context, e.g. as a drop-in replacement for [`svn externals`](https://svnbook.red-bean.com/en/1.7/svn.advanced.externals.html) in a git project.      
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ Although this project was designed to meet the needs of C++ developers, extra ef
   cd build/
   cmake ..
   ```
-- People who want to understand the motivation and history of this project and how it solves all problems with [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules), please check out [this talk](https://www.daixtrose.de/talk/saying-goodbye-to-dependency-hell/).
+- People who want to understand the motivation and history of this project and how it solves all problems that come with [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules), please check out [this talk](https://www.daixtrose.de/talk/saying-goodbye-to-dependency-hell/).
 
 ## A Quick First Example
 
