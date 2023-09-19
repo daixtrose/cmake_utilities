@@ -51,10 +51,10 @@ Alternatively, you can also include it via add_subdirectory() or provide it via 
 
   FetchContent_MakeAvailable(cmake_utilities)
 
-You can also run the RepoManResolve.cmake script as a command directly from the command line. This also works for non-CMake projects. This s called ``script mode``, in contrast to ``project mode``, which is the normal usage of the module though a CMake project file.
+You can also run the RepoManResolve.cmake script as a command directly from the command line. This also works for non-CMake projects. This is called ``script mode``, in contrast to ``project mode``, which is the normal usage of the module through a CMake project file.
 
 
-In oder to actually do anything, the project root directory must contain a ``dependencies. txt`` file or a file with a different name, if ``REPOMAN_DEPENDENCIES_FILE_NAME`` is set accordingly.
+In order to actually do anything, the project root directory must contain a ``dependencies. txt`` file or a file with a different name, if ``REPOMAN_DEPENDENCIES_FILE_NAME`` is set accordingly.
 This file must contain one line for each dependency, in the format given to ``FetchContent()``. All arguments of ``FetchContent()`` are supported. Empty and commented lines are also allowed and will be ignored.
 
 Each dependency defined this way will be provided and included via ``add_subdirectory()``. Any sub-dependencies in a dependency's ``dependencies.txt`` will also be added. If a dependency has already been defined in a parent project, that definition takes precedence, so higher-level projects can override their child dependency's requirements.
@@ -70,7 +70,7 @@ The following variables modify the behaviour of the module. They are set to reas
   Use the workspace defined by ``REPOMAN_DEPENDENCIES_WORKSPACE`` for dependency sources instead of the default FetchContent directories. This allows easier editing of dependency sources. Defaults to ``ON`` in script mode and ``OFF`` in project mode.
 
 .. variable:: REPOMAN_DEPENDENCIES_WORKSPACE
-  Where to put the dependency sources. This can be either empty, a name, a relative path or an absolute path.
+  Where to put the dependency sources. This can be either empty, a name, a relative path, or an absolute path.
 
   An empty string will use the defaults: a directory name generated from the current project directory, in the current project's parent directory.
   A name will use that given name, in the current project directory.
@@ -206,7 +206,7 @@ function(repoman__internal__handle_dependencies DIRECTORY)
 
             list(APPEND REPOMAN_DEPENDENCIES ${REPOMAN_DEPENDENCY_NAME})
 
-            # Set depedencvy directories
+            # Set depedency directories
             if(REPOMAN_DEPENDENCIES_USE_WORKSPACE)
                 set(DEPENDENCY_SOURCE_DIR ${REPOMAN_WORKSPACE}/${REPOMAN_DEPENDENCY_NAME})
             else()
