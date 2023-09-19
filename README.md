@@ -20,7 +20,7 @@ CMake Utilities is a collection of utilities which help escaping the dependency 
 
 It extends CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature such that all dependency information is collected in a separate file in the top-level of the repository, thereby avoiding repetitive code in the CMake files and enabling efficient configuration management.
 
-In addition, these utilities provide support for developers to apply code changes distributed across dependencies and the dependent code base. When configured accordingly, these utilities will put dependencies (and dependencies of dependencies) outside the standard [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps` structure to a user-defined place in the filesystem. The dependency hierarchy tree gets unfolded into a flat structure.  Debugging information will be adapted accordingly. It is possible to have mutiple build directories point to the very same codebase.
+In addition, these utilities provide support for developers to apply code changes distributed across dependencies and the dependent code base. When configured accordingly, these utilities will put dependencies (and dependencies of dependencies) outside the standard [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps` structure to a user-defined place in the filesystem. The dependency hierarchy tree gets unfolded into a flat structure.  Debugging information will be adapted accordingly. It is possible to have multiple build directories point to the very same codebase.
 
 Although this project was designed to meet the needs of C++ developers, extra effort went into not having any dependency beyond CMake itself, so this project can be used in other context, e.g. as a drop-in replacement for [`svn externals`](https://svnbook.red-bean.com/en/1.7/svn.advanced.externals.html) in a git project.      
 
@@ -103,7 +103,7 @@ target_link_libraries(
     fmt::fmt
 )
 
-# Only build an run tests if this project is compiled as top-level project
+# Only build and run tests if this project is compiled as a top-level project
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     enable_testing()
     add_subdirectory(test-catch)
@@ -132,7 +132,7 @@ catch2 GIT_REPOSITORY https://github.com/catchorg/Catch2 GIT_TAG v2.x
 fmt GIT_REPOSITORY https://github.com/fmtlib/fmt GIT_TAG master
 ```
 
-This file is read and parsed by the utilities. The first line of the file always must contain the file format version information. As of today this is `Version: v1.0.0`. This makes the information stored in this file robust against future changes of the utilities.     
+This file is read and parsed by the utilities. The first line of the file always must contain the file format version information. As of today, this is `Version: v1.0.0`. This makes the information stored in this file robust against future changes of the utilities.     
 
 Comments must be prepended with a `#` symbol. Empty lines are ignored. Please ensure that there is [a newline at the end of file to avoid surprises](https://unix.stackexchange.com/questions/18743/whats-the-point-in-adding-a-new-line-to-the-end-of-a-file).
 
@@ -183,9 +183,9 @@ catch_discover_tests(test_tool_1)
 
 ## Editing Code and Debugging
 
-CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature is rather limited when code changes are required not only in the top-level project, but also in dependencies. CMake pulls all files into a subdirectory of the build directory, namely [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps`. There they are under version control, but may be overwritten without question on subsequent cmake calls - or accidentally deleted by the user when cleaning up the build directory. This makes code editing and tracking changes a pain. Also, building and debugging multiple variants (e.g. differing in compiler flags) requires to download or clone all dependencies multiple times into different build directories. This does not scale well with large dependency trees.
+CMake's [`FetchContent`](https://cmake.org/cmake/help/latest/module/FetchContent.html) feature is rather limited when code changes are required not only in the top-level project, but also in dependencies. CMake pulls all files into a subdirectory of the build directory, namely [`${CMAKE_BINARY_DIR}`](https://cmake.org/cmake/help/latest/variable/CMAKE_BINARY_DIR.html#cmake-binary-dir)`/_deps`. There they are under version control, but may be overwritten without question on subsequent CMake calls - or accidentally deleted by the user when cleaning up the build directory. This makes code editing and tracking changes a pain. Also, building and debugging multiple variants (e.g. differing in compiler flags) requires to download or clone all dependencies multiple times into different build directories. This does not scale well with large dependency trees.
 
-With the utilities presented here this is easily overcome. In addition, it is guaranteed that the network traffic *and* the disc usage are both minimized - at least for one top level project. For multiple top level projects one has to take extra measures based on the options presented here.
+With the utilities presented here this is easily overcome. In addition, it is guaranteed that the network traffic *and* the disc usage are both minimized - at least for one top-level project. For multiple top-level projects one has to take extra measures based on the options presented here.
 
 All one has to do is declare a deviation from the standard CMake behavior and set a custom filesystem location (directory) for the so-called workspace, i.e. the place where all dependencies are copied to on the filesystem. As a user, you have several choices:
 
@@ -201,7 +201,7 @@ set(REPOMAN_DEPENDENCIES_USE_WORKSPACE ON CACHE BOOL "")
 set(REPOMAN_DEPENDENCIES_WORKSPACE "ws" CACHE PATH "")
 ```
 
-Given these settings, the initial run of the `cmake` command with populate all dependencies into [`${CMAKE_PROJECT_NAME}`](https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_NAME.html#cmake-project-name)`/ws` into a flat structure. All dependencies and all dependencies of dependencies mentioned in the top level `dependencies.txt` file will reside in dedicated subdirectories side by side.   
+Given these settings, the initial run of the `cmake` command with populate all dependencies into [`${CMAKE_PROJECT_NAME}`](https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_NAME.html#cmake-project-name)`/ws` into a flat structure. All dependencies and all dependencies of dependencies mentioned in the top-level `dependencies.txt` file will reside in dedicated subdirectories side by side.   
 
 ```bash
 .../tool_1/build$ tree -L 2 ..
@@ -266,7 +266,7 @@ Setting the path relatively without adding a directory name, like e.g.
 ```cmake
 set(REPOMAN_DEPENDENCIES_WORKSPACE "../" CACHE PATH "") 
 ```
-will use an automatically generated directory name and place it besides the current project directory [`${CMAKE_PROJECT_NAME}`](https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_NAME.html#cmake-project-name).
+will use and automatically generated directory name and place it besides the current project directory [`${CMAKE_PROJECT_NAME}`](https://cmake.org/cmake/help/latest/variable/CMAKE_PROJECT_NAME.html#cmake-project-name).
 
 ```bash
 tool_1/build$ tree -L 2 ../..
@@ -333,7 +333,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 Built target repoman-status
 ```
 
-Note that all git dependencies are cloned in detached state. One can switch to a specific branch, e.g. 
+Note that all git dependencies are cloned in a detached state. One can switch to a specific branch, e.g. 
 
 ```bash
 tool_1/build$ cd ../ws/lib_A/
@@ -361,7 +361,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 Built target repoman-status
 ```
 
-This feature helps you keep track of all changes made across all dependencies. For future versions of this utility project it is planned to add further bulk operations like e.g. creating a branch. In the meantime a workaround is using [`git-bulk`](https://github.com/nschlimm/git-bulk).
+This feature helps you keep track of all changes made across all dependencies. For future versions of this utility project, it is planned to add further bulk operations like e.g. creating a branch. In the meantime, a workaround is using [`git-bulk`](https://github.com/nschlimm/git-bulk).
 
 ## Some Remarks
 
